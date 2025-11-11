@@ -74,6 +74,6 @@ python3 QRCode_axmodel_infer_v8.py
 ![alt text](image.png)
 
 注:
-1.外扩表示模型在检测到二维码后对检测框扩边，从原图截取对应区域后，再送至pyzbar库进行识别;
-2.wechat_qrcode_opencv/opencv为二维码检测识别开源库，统计结果为直接输入原图测试。其余均为模型检测+crop+pyzbar识别结果。
-3.yolov9~v12在使用默认参数训练时，均出现不同程度的batch梯度爆炸问题，因此暂未统计模型相关效果,后续正常后可能继续更新。
+    1.外扩表示模型在检测到二维码后对检测框扩边，从原图截取对应区域后，再送至pyzbar库进行识别;
+    2.wechat_qrcode_opencv/opencv为二维码检测识别开源库，统计结果为直接输入原图测试。其余均为模型检测+crop+pyzbar识别结果。
+    3.yolov9~v12在使用默认参数训练时，均出现不同程度的batch梯度爆炸问题，因此暂未统计模型相关效果,后续正常后可能继续更新。
