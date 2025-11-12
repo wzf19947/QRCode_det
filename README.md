@@ -1,8 +1,8 @@
 # QRCode_Axera
 QRCode det & recognize DEMO on Axera
-- 搜集二维码图片数据对ultralytics yolo系列nano/tiny版本进行默认参数训练，统计性能及模型精度
+- 搜集二维码图片数据对ultralytics yolo系列nano/tiny版本进行默认参数训练，量化转换后统计板端模型性能及精度
 - 提供yolov5/yolov8系列二维码检测+pyzbar识别板端推理demo
-- 目前支持  Python 语言 
+- 目前支持 Python 语言 
 
 ## 支持平台
 
@@ -73,7 +73,10 @@ python3 QRCode_axmodel_infer_v8.py
 使用./qrcode_test下的图片作为测试集，对不同版本模型进行检测+识别测试，效果统计如下：
 ![alt text](image.png)
 
-注:
-    1.外扩表示模型在检测到二维码后对检测框扩边，从原图截取对应区域后，再送至pyzbar库进行识别;
-    2.wechat_qrcode_opencv/opencv为二维码检测识别开源库，统计结果为直接输入原图测试。其余均为模型检测+crop+pyzbar识别结果。
-    3.yolov9~v12在使用默认参数训练时，均出现不同程度的batch梯度爆炸问题，因此暂未统计模型相关效果,后续正常后可能继续更新。
+
+```
+注：
+    1.外扩表示模型在检测到二维码后对检测框扩边，从原图截取对应区域后，再送至pyzbar库进行识别;v5/v8检测后处理工程均从ultralytics等原工程中剥离，仅供参考，v8~v12模型均使用v8后处理逻辑；
+
+    2.wechat_qrcode_opencv/opencv为二维码检测识别开源库，统计结果为直接输入原图测试。其余均为模型检测+crop+pyzbar识别结果；
+```

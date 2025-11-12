@@ -249,10 +249,10 @@ def xyxy2xywh(x):
     return y
 
 def post_process_yolo(det, im, im0, gn, save_path, img_name):
+    detections = []
     if len(det):
         det[:, :4] = scale_boxes(im.shape[:2], det[:, :4], im0.shape).round()
         colors = Colors()
-        detections = []
         for *xyxy, conf, cls in reversed(det):
             # print("class:",int(cls), "left:%.0f" % xyxy[0],"top:%.0f" % xyxy[1],"right:%.0f" % xyxy[2],"bottom:%.0f" % xyxy[3], "conf:",'{:.0f}%'.format(float(conf)*100))
             int_coords = [int(tensor.item()) for tensor in xyxy]
