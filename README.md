@@ -73,7 +73,6 @@ python3 QRCode_axmodel_infer_v8.py
 使用./qrcode_test下的图片作为测试集，对不同版本模型进行检测+识别测试，效果统计如下：
 ![alt text](image.png)
 
-
 ```
 注：
     1.外扩表示模型在检测到二维码后对检测框扩边，从原图截取对应区域后，再送至pyzbar库进行识别;v5/v8检测后处理工程均从ultralytics等原工程中剥离，仅供参考，v8~v12模型均使用v8后处理逻辑；
