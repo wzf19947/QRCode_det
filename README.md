@@ -1,7 +1,7 @@
 # QRCode_Axera
 QRCode det & recognize DEMO on Axera
-- 搜集二维码图片数据对ultralytics yolo系列nano/tiny版本进行默认参数训练，量化转换后统计板端模型性能及精度
-- 提供yolov5/yolov8系列二维码检测+pyzbar识别板端推理demo
+- 搜集二维码图片数据对ultralytics yolo/DEIMv2系列轻量级模型进行默认参数训练，量化转换后统计板端模型性能及精度
+- 提供yolov5/yolov8/DEIMv2系列二维码检测+pyzbar识别板端推理demo
 - 目前支持 Python 语言 
 
 ## 支持平台
@@ -10,19 +10,25 @@ QRCode det & recognize DEMO on Axera
 
 ## 模型导出
 
-参考[ultralytics](https://github.com/ultralytics/ultralytics) 中对模型导出方法，为方便部署去掉后处理部分，保留了三个输出分支，执行类似命令导出onnx模型：
+YOLO系列参考[ultralytics](https://github.com/ultralytics/ultralytics) 中对模型导出方法，为方便部署去掉后处理部分，保留了三个输出分支，执行类似命令导出onnx模型：
 
 ```
 yolo detect export model=yolov8n.pt format=onnx
 ```
 
+DEIMv2系列参考[DEIMv2](https://github.com/Intellindust-AI-Lab/DEIMv2) 中对模型导出方法，为方便部署去掉后处理部分，执行类似命令导出onnx模型：
+```
+python tools/deployment/export_onnx_deploy.py --check -c configs/deimv2/deimv2_hgnetv2_femto_coco.yml -r  weights/deimv2_hgnetv2_femto_coco.pth
+```
 ## 模型转换
 
 - Pulsar2 安装及使用请参考相关文档
   - [在线文档](https://pulsar2-docs.readthedocs.io/zh-cn/latest/index.html)
 
 ```
-pulsar2 build --config ./qrcode.json
+pulsar2 build --config ./yolo.json
+or
+pulsar2 build --config ./deimv2.json
 ```
 得到对应模型用于部署的axmodel。
 
@@ -54,6 +60,8 @@ pip install pyzbar
 python3 QRCode_onnx_infer_v5.py
 or
 python3 QRCode_onnx_infer_v8.py
+or
+python3 QRCode_onnx_infer_DEIMv2.py
 ```
 
 ##### 基于AXEngine运行  
@@ -63,6 +71,8 @@ python3 QRCode_onnx_infer_v8.py
 python3 QRCode_axmodel_infer_v5.py
 or
 python3 QRCode_axmodel_infer_v8.py
+or
+python3 QRCode_axmodel_infer_DEIMv2.py
 ```  
 
 
@@ -70,13 +80,13 @@ python3 QRCode_axmodel_infer_v8.py
 
 #### AX650N
 
-使用./qrcode_test下的图片作为测试集，对ultralytics yolo不同版本模型进行检测+识别测试，效果统计如下：
+使用./qrcode_test下的图片作为测试集，进行检测+识别测试，效果统计如下：
 ![alt text](image.png)
 
 ![alt text](image-1.png)
 ```
 注：
-    1.外扩表示模型在检测到二维码后对检测框扩边，从原图截取对应区域后，再送至pyzbar库进行识别;v5/v8检测后处理工程均从ultralytics等原工程中剥离，仅供参考，v8~v12模型均使用v8后处理逻辑；
+    1.外扩表示模型在检测到二维码后对检测框扩边，从原图截取对应区域后，再送至pyzbar库进行识别;检测模型后处理代码均从原工程中剥离，仅供参考，YOLOv8~v12模型均使用v8后处理逻辑；
     2.wechat_qrcode_opencv/opencv为二维码检测识别开源库，统计结果为直接输入原图测试。其余均为模型检测+crop+pyzbar识别结果；
     3.latency为模型推理耗时，整流程耗时大部分在preprocess和postprocess阶段。测试图片均为单二维码图片，耗时仅供参考；
 ```
