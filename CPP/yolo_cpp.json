@@ -1,0 +1,39 @@
+{
+  "input": "./yolov8n.onnx",
+  "output_dir": "./yolov8n",
+  "output_name": "yolov8n_npu3.axmodel",
+  "model_type": "ONNX",
+  "target_hardware": "AX650",
+  "npu_mode": "NPU3",
+  "input_shapes": "input:1x3x640x640",
+  "quant": {
+    "input_configs": [
+      {
+        "tensor_name": "images",
+        "calibration_dataset": "./qrcode.tar.gz",
+        "calibration_size": -1,
+        "calibration_mean": [0,0,0],
+        "calibration_std": [255,255,255]
+      }
+    ],
+    "calibration_method": "MinMax",
+    "precision_analysis": true,
+    "precision_analysis_method": "EndToEnd",
+    "precision_analysis_mode": "NPUBackend", 
+  },
+  "input_processors": [
+    {
+      "tensor_name": "images",
+      "tensor_format": "BGR",
+      "tensor_layout": "NCHW",
+      "src_format": "BGR",
+      "src_dtype": "U8",
+      "src_layout": "NHWC",
+      "csc_mode": "NoCSC"
+    }
+  ],
+  "compiler": {
+    "check": 2
+  }
+}
+
