@@ -64,13 +64,12 @@ scp -r include/* /home/workspace/Feng/ax-samples-main/ax650n_bsp_sdk-main/msp/ou
 ```
 ./ax_yolov8_qrcode_batch -m ./yolov8n_cpp_npu3.axmodel -i ./qrcode_test/ -o ./res
 ./ax_yolov5_qrcode_batch -m ./yolov5n_cpp_npu3.axmodel -i ./qrcode_test/ -o ./res
-
 ```  
 
 ### 板端结果
 
 #### AX650N
-
+```
 使用./qrcode_test下的图片作为测试集，进行检测+识别测试，效果统计如下：
 image path: ./qrcode_test//qrcode_54.jpg image index: qrcode_54
 post process cost time:0.92 ms
@@ -89,7 +88,7 @@ Repeat 1 times, avg time 1.42 ms, max_time 1.42 ms, min_time 1.42 ms
 --------------------------------------
 detection num: 1
  0:  83%, [1020,  749, 1148,  869], QRCode
-ZBAR cut region = [128 x 120]
+ZBAR cut region = [128 x 120]a
 ZBAR scan n = 0
 ZBAR scan success use ThresholdType=3 thr=157
 Decode data:[C:CNS:Aixin-GuestP:aixinguestK:e1QbyyUv], type:[QR-Code]
@@ -97,3 +96,4 @@ Decode data:[C:CNS:Aixin-GuestP:aixinguestK:e1QbyyUv], type:[QR-Code]
 Total pics:50
 Total decode count:39
 Decode rate:78.0%
+```
