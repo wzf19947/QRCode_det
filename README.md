@@ -2,7 +2,7 @@
 QRCode det & recognize DEMO on Axera
 - 搜集二维码图片数据对ultralytics yolo/DEIMv2系列轻量级模型进行默认参数训练，量化转换后统计板端模型性能及精度
 - 提供yolov5/yolov8/DEIMv2系列二维码检测+pyzbar识别板端推理demo
-- 目前支持 Python 语言 
+- 目前支持 Python/C++ 语言 
 
 ## 支持平台
 

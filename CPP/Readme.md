@@ -1,7 +1,6 @@
 # QRCode_C++ demo
 QRCode det & recognize C++ DEMO on Axera
-- 提供yolov5/yolov8二维码检测+zbar识别板端C++推理demo
-- 目前支持 C++ 语言 
+- 提供yolov5/yolov8/DEIMv2系列二维码检测+zbar识别板端C++推理demo
 
 ## 支持平台
 
@@ -14,6 +13,8 @@ QRCode det & recognize C++ DEMO on Axera
 
 ```
 pulsar2 build --config ./yolo_cpp.json
+or
+pulsar2 build --config ./deimv2_cpp.json
 ```
 得到对应模型用于部署的axmodel。
 
@@ -53,7 +54,7 @@ scp -r include/* /home/workspace/Feng/ax-samples-main/ax650n_bsp_sdk-main/msp/ou
 最新版本已开始提供 AX650 系列（AX650A、AX650N）、AX620E 系列（AX630C、AX620Q）的 NPU 示例，其中也包含了本文介绍的 YOLO_Uniow 参考代码。
 [AX_Samples](https://github.com/AXERA-TECH/ax-samples)
 
-编译参考./compile_650.md, 编译ax_yolov8_qrcode_batch.cc、ax_yolov5_qrcode_batch.cc得到可执行文件ax_yolov8_qrcode_batch、ax_yolov5_qrcode_batch
+编译参考./compile_650.md, 编译.cc文件得到可执行程序ax_yolov8_qrcode_batch、ax_yolov5_qrcode_batch、ax_deimv2_qrcode_batch
 
 
 #### 运行
@@ -64,13 +65,14 @@ scp -r include/* /home/workspace/Feng/ax-samples-main/ax650n_bsp_sdk-main/msp/ou
 ```
 ./ax_yolov8_qrcode_batch -m ./yolov8n_cpp_npu3.axmodel -i ./qrcode_test/ -o ./res
 ./ax_yolov5_qrcode_batch -m ./yolov5n_cpp_npu3.axmodel -i ./qrcode_test/ -o ./res
+./ax_deimv2_qrcode_batch -m ./deimv2_hgnetv2_femto_coco_cpp_npu3.axmodel -i ./qrcode_test/ -o ./res
 ```  
 
 ### 板端结果
 
 #### AX650N
 ```
-使用./qrcode_test下的图片作为测试集，进行检测+识别测试，效果统计如下：
+使用./qrcode_test下的图片作为测试集，进行检测+识别测试，效果如下：
 image path: ./qrcode_test//qrcode_54.jpg image index: qrcode_54
 post process cost time:0.92 ms
 --------------------------------------

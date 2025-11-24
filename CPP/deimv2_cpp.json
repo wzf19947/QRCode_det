@@ -1,0 +1,46 @@
+{
+  "input": "./deimv2_hgnetv2_femto_coco_cut.onnx",
+  "output_dir": "./deimv2_hgnetv2_femto_coco",
+  "output_name": "deimv2_hgnetv2_femto_coco_cpp_npu3.axmodel",
+  "model_type": "ONNX",
+  "target_hardware": "AX650",
+  "npu_mode": "NPU3",
+  "quant": {
+    "input_configs": [
+      {
+        "tensor_name": "images",
+        "calibration_dataset": "./qrcode.tar.gz",
+        "calibration_size": -1,
+        "calibration_mean": [0,0,0],
+        "calibration_std": [255,255,255]
+      }
+    ],
+    "calibration_method": "MinMax",
+    "precision_analysis": true,
+    "precision_analysis_method": "EndToEnd",
+    "precision_analysis_mode": "NPUBackend", 
+    "conv_bias_data_type": "FP32",
+    "enable_smooth_quant": true,
+    "disable_auto_refine_scale": true,
+    "transformer_opt_level": 1,
+    "layer_configs":  [{
+        "start_tensor_names": ["DEFAULT"],
+        "end_tensor_names": ["DEFAULT"],
+        "data_type": "U16"
+    }]
+  },
+  "input_processors": [
+    {
+      "tensor_name": "images",
+      "tensor_format": "BGR",
+      "tensor_layout": "NCHW",
+      "src_format": "BGR",
+      "src_dtype": "U8",
+      "src_layout": "NHWC",
+      "csc_mode": "NoCSC"
+    }
+  ],
+  "compiler": {
+    "check": 0
+  }
+}
