@@ -16,7 +16,7 @@ YOLO系列参考[ultralytics](https://github.com/ultralytics/ultralytics) 中对
 yolo detect export model=yolov8n.pt format=onnx
 ```
 
-DEIMv2系列参考[DEIMv2](https://github.com/Intellindust-AI-Lab/DEIMv2) 中对模型导出方法，为方便部署去掉后处理部分，执行类似命令导出onnx模型：
+DEIMv2系列参考[DEIMv2](https://github.com/wzf19947/DEIMv2) 中readme.txt模型导出方法，为方便部署去掉后处理部分，执行类似命令导出onnx模型：
 ```
 python tools/deployment/export_onnx_deploy.py --check -c configs/deimv2/deimv2_hgnetv2_femto_coco.yml -r  weights/deimv2_hgnetv2_femto_coco.pth
 ```
