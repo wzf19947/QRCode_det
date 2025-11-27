@@ -1,5 +1,5 @@
 {
-  "input": "./deimv2_hgnetv2_femto_coco_cut.onnx",
+  "input": "./deimv2_hgnetv2_femto_coco.onnx",
   "output_dir": "./deimv2_hgnetv2_femto_coco",
   "output_name": "deimv2_hgnetv2_femto_coco_cpp_npu3.axmodel",
   "model_type": "ONNX",

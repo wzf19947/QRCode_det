@@ -262,10 +262,10 @@ class QRCodeDecoder:
         for idx, region in enumerate(regions):
             x1, y1, x2, y2 = region
             # 外扩缓解检测截断，视检测情况而定
-            # x1-=15
-            # y1-=15
-            # x2+=15
-            # y2+=15
+            x1-=15
+            y1-=15
+            x2+=15
+            y2+=15
             # 裁剪图像
             cropped = image[y1:y2, x1:x2]
             if cropped.size > 0:
