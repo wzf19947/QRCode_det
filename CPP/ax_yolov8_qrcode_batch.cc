@@ -80,9 +80,9 @@ namespace ax
                 *min_max_time.first);
         fprintf(stdout, "--------------------------------------\n");
         fprintf(stdout, "detection num: %zu\n", objects.size());
-        // std::string output_img_name = output_dir + "/" + basename;
-        // std::string output_txt_name = output_dir + "/" + basename;
-        // detection::draw_objects(mat, objects, CLASS_NAMES, output_img_name.c_str());
+        std::string output_img_name = output_dir + "/" + basename;
+        std::string output_txt_name = output_dir + "/" + basename;
+        detection::draw_objects(mat, objects, CLASS_NAMES, output_img_name.c_str());
         // detection::save_txt(mat, objects, output_txt_name);
         // for (size_t i = 0; i < objects.size(); i++)
         // {
@@ -135,6 +135,7 @@ namespace ax
         // 6. alloc io
         AX_ENGINE_IO_T io_data;
         ret = middleware::prepare_io(io_info, &io_data, std::make_pair(AX_ENGINE_ABST_DEFAULT, AX_ENGINE_ABST_CACHED));
+        printf("138 input size: %d\n", io_data.pInputs[0].nSize);
         SAMPLE_AX_ENGINE_DEAL_HANDLE
         fprintf(stdout, "Engine alloc io is done. \n");
 
@@ -148,6 +149,8 @@ namespace ax
         zbar::zbar_image_scanner_t *scanner = NULL;
         scanner = zbar::zbar_image_scanner_create();
         zbar::zbar_image_scanner_set_config(scanner, zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1);
+        zbar::zbar_image_scanner_set_config(scanner, zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_UNCERTAINTY, 6);
+        zbar::zbar_image_scanner_set_config(scanner, zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_POSITION, 1);
         zbar::zbar_image_t *zbarimage = zbar::zbar_image_create();
         zbar::zbar_image_set_format(zbarimage, zbar_fourcc('Y', '8', '0', '0'));
 
@@ -210,6 +213,7 @@ namespace ax
                 cv::cvtColor(roi_image, gray, cv::COLOR_BGR2GRAY);
                 zbar::zbar_image_set_size(zbarimage, cut_width, cut_height);
                 zbar::zbar_image_set_data(zbarimage, gray.data, cut_width * cut_height, NULL);
+
                 int n = zbar_scan_image(scanner, zbarimage);
                 fprintf(stdout,"ZBAR scan n = %d\n", n);
                 
@@ -272,7 +276,7 @@ namespace ax
                         zbar::zbar_image_set_data(zbarimage, gray.data, cut_width * cut_height, NULL);
                         n = zbar_scan_image(scanner, zbarimage);
                         if (n > 0) {
-                            fprintf(stdout, "ZBAR scan success use size of %dx%d\n", cut_width, cut_height);
+                            fprintf(stdout, "ZBAR scan success use expand size of %dx%d\n", cut_width, cut_height);
                             goto AFTER_SCAN;
                         } else {
                             dstImage.release();
@@ -281,7 +285,7 @@ namespace ax
 
                 }
 
-                //cut区域放大
+                // cut区域放大
                 if (n < 1) {
                     cv::Mat srcImage = gray.clone();
                     cv::Mat dstImage;
@@ -290,11 +294,58 @@ namespace ax
                     zbar::zbar_image_set_data(zbarimage, dstImage.data, ZBAR_DECODE_W * ZBAR_DECODE_H, NULL);
                     n = zbar_scan_image(scanner, zbarimage);
                     if (n > 0) {
-                        fprintf(stdout, "ZBAR scan success use size of %dx%d\n", ZBAR_DECODE_W, ZBAR_DECODE_H);
+                        fprintf(stdout, "ZBAR scan success use scale size of %dx%d\n", ZBAR_DECODE_W, ZBAR_DECODE_H);
                         goto AFTER_SCAN;
                     } else {
                         dstImage.release();
                     }
+                }
+
+                //cut区域按比例外扩
+                if (n < 1) {
+                    for (float ratio = 0.01; ratio < 0.1; ratio += 0.01)
+                    {
+                        int x1_neww = (1-ratio)*obj.rect.x > 0?(1-ratio)*obj.rect.x:0;
+                        int x2_neww = (1+ratio)*(obj.rect.x + obj.rect.width) < image_org.cols?(1+ratio)*(obj.rect.x + obj.rect.width):image_org.cols;
+                        int y1_neww = (1-ratio)*obj.rect.y > 0?(1-ratio)*obj.rect.y:0;
+                        int y2_neww = (1+ratio)*(obj.rect.y + obj.rect.height) < image_org.rows?(1+ratio)*(obj.rect.y + obj.rect.height):image_org.rows;
+                        cv::Rect roi_new(x1_neww,y1_neww,x2_neww-x1_neww,y2_neww-y1_neww);
+                        cv::Mat dstImage = image_org(roi_new);
+                        int cut_width  = x2_neww-x1_neww;
+                        int cut_height = y2_neww-y1_neww;
+                        cv::Mat gray;
+                        cv::cvtColor(dstImage, gray, cv::COLOR_BGR2GRAY);
+                        // cv::imwrite(output_dir + "/" + basename + "_cut_" + std::to_string(cut_width) + "_" + std::to_string(cut_height) + ".jpg", gray);
+                        zbar::zbar_image_set_size(zbarimage, cut_width, cut_height);
+                        zbar::zbar_image_set_data(zbarimage, gray.data, cut_width * cut_height, NULL);
+                        n = zbar_scan_image(scanner, zbarimage);
+                        if (n > 0) {
+                            fprintf(stdout, "ZBAR scan success use ratio scale of %dx%d\n", cut_width, cut_height);
+                            goto AFTER_SCAN;
+                        } else {
+                            dstImage.release();
+                        }
+                    }
+
+                }
+
+                //自适应直方图均衡化对比度增强
+                if (n<1)
+                {
+                    cv::Mat srcImage = gray.clone();
+                    cv::Mat dstImage;
+                    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(2.0, cv::Size(8, 8));
+                    clahe->apply(srcImage, dstImage);
+                    cv::imwrite(output_dir + "/" + basename + "_clahe" + ".jpg", dstImage);
+                    zbar::zbar_image_set_size(zbarimage, cut_width, cut_height);
+                    zbar::zbar_image_set_data(zbarimage, dstImage.data, dstImage.total() * dstImage.elemSize(), NULL);
+                    n = zbar_scan_image(scanner, zbarimage);
+                    if (n > 0) {
+                        fprintf(stdout, "ZBAR scan success use contrast_enhance\n");
+                        goto AFTER_SCAN;
+                    } else {
+                        dstImage.release();
+                    }                
                 }
 
                 AFTER_SCAN:
@@ -333,7 +384,7 @@ int main(int argc, char* argv[])
     cmdline::parser cmd;
     cmd.add<std::string>("model", 'm', "joint file(a.k.a. joint model)", true, "");
     cmd.add<std::string>("image", 'i', "image path", true, "");
-    cmd.add<std::string>("output", 'o', "out path", true, "./res");
+    cmd.add<std::string>("output", 'o', "out path", false, "./v8_res");
     cmd.add<std::string>("size", 'g', "input_h, input_w", false, std::to_string(DEFAULT_IMG_H) + "," + std::to_string(DEFAULT_IMG_W));
 
     cmd.add<int>("repeat", 'r', "repeat count", false, DEFAULT_LOOP_COUNT);
