@@ -45,7 +45,6 @@ pulsar2 build --config ./nanodet.json
 
 ## 上板部署
 
-- AX650N 的设备已预装 Ubuntu22.04
 - 以 root 权限登陆 AX650N/AX630C/AX637 的板卡设备
 - 已验证设备：AX650N/AX630C/AX637 DEMO Board
 
@@ -80,13 +79,14 @@ python3 QRCode_axmodel_infer_xxx.py
 
 ### 效果统计
 
-#### AX650N
-
 使用./qrcode_test下的图片作为测试集，进行检测+识别测试，效果统计如下：
 ![alt text](image.png)
 ```
 注：
-    1.外扩表示模型在检测到二维码后对检测框扩边，从原图截取对应区域后，再送至pyzbar库进行识别;检测模型后处理代码均从原工程中剥离，仅供参考，YOLOv8~v12模型均使用v8后处理逻辑；
-    2.wechat_qrcode_opencv/opencv为二维码检测识别开源库，统计结果为直接输入原图测试。其余均为模型检测+crop+pyzbar识别结果；
-    3.latency为模型推理耗时，整流程耗时大部分在preprocess和postprocess阶段。测试图片均为单二维码图片，耗时仅供参考；
+1.YOLOv10~v12在使用默认参数训练时均有不同程度loss inf异常但最终mAP正常，可能与未使用预训练模型有关；
+2.检测框比较贴近二维码的识别率反而不高，检测区域适当外扩后识别效果更好；
+3.python demo识别率仅简单对比了是否外扩对精度的影响；C++ demo识别率则是额外加入了图像处理操作后的最终效果；模型latency和cmm size均通过ax_run_model统计；
+4.deimv2_femto这个模型部署效果较差，650上u8无检出，u16正常；620E上build报错；637上只能u8量化不支持u16，但u8无检出。
+5.对图片直接使用开源二维码识别库opencv/wechat_qrcode_opencv进行识别，识别率低于检测+crop+zbar识别方案。
+6.测试数据均为单二维码图片，测试耗时仅供参考。
 ```

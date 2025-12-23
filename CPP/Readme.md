@@ -30,6 +30,7 @@ pulsar2 build --config ./nanodet.json
 #### Requirements
 
 二维码识别需要安装 zbar 库，交叉编译方法如下:
+
 1.下载源码：
 ```
 git clone https://github.com/mchehab/zbar.git
@@ -64,7 +65,8 @@ scp -r include/* /home/workspace/Feng/ax-samples-main/ax650n_bsp_sdk-main/msp/ou
 开源项目[AX_Samples](https://github.com/AXERA-TECH/ax-samples)实现了常见的深度学习开源算法在 爱芯元智 的 AI SoC 上的示例代码，方便社区开发者进行快速评估和适配。
 最新版本已开始提供 AX650 系列（AX650A、AX650N）、AX620E 系列（AX630C、AX620Q）的 NPU 示例。
 
-以AX650为例，编译参考[compile_650.md](https://github.com/AXERA-TECH/ax-samples/blob/main/docs/compile_650.md), 编译.cc文件得到可执行程序ax_yolov8_qrcode_batch、ax_yolov5_qrcode_batch、ax_deimv2_qrcode_batch、ax_nanodetplus_qrcode_batch
+以AX650为例，编译参考[compile_650.md](https://github.com/AXERA-TECH/ax-samples/blob/main/docs/compile_650.md), 编译.cc文件得到可执行程序ax_yolov8_qrcode_batch、ax_yolov5_qrcode_batch、ax_deimv2_qrcode_batch、ax_nanodetplus_qrcode_batch。
+
 AX630C、AX637的板端编译方法参考对应的compile_xxx.md即可。
 
 
