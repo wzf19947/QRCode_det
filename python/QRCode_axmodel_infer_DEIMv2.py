@@ -227,18 +227,19 @@ def process_image(sess, im_pil, post_processor, size=640, model_size='s'):
     resized_im_pil, ratio, pad_w, pad_h = resize_with_aspect_ratio(im_pil, size)
     orig_size = torch.tensor([[resized_im_pil.size[1], resized_im_pil.size[0]]])
 
-    transforms = T.Compose([
-            T.ToTensor(),
-            T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]) 
-                if model_size not in ['atto', 'femto', 'pico', 'n'] 
-                else T.Lambda(lambda x: x)
-        ])
+    # transforms = T.Compose([
+    #         T.ToTensor(),
+    #         T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]) 
+    #             if model_size not in ['atto', 'femto', 'pico', 'n'] 
+    #             else T.Lambda(lambda x: x)
+    #     ])
 
-    im_data = transforms(resized_im_pil).unsqueeze(0)
-
+    # im_data = transforms(resized_im_pil).unsqueeze(0)
+    im_data = np.array(resized_im_pil)
+    im_data = np.expand_dims(im_data, axis=0).astype(np.uint8)
     output = sess.run(
         output_names=None,
-        input_feed={'images': im_data.numpy()}
+        input_feed={'images': im_data}
     )
 
     output = {"pred_logits": torch.from_numpy(output[0]), "pred_boxes": torch.from_numpy(output[1])}
@@ -309,7 +310,7 @@ class QRCodeDecoder:
 if __name__ == '__main__':
 
     #load the ONNX model
-    sess = axe.InferenceSession('deimv2_hgnetv2_femto_coco_npu3.axmodel')
+    sess = axe.InferenceSession('deimv2_femto_650_npu1_u16.axmodel')
     size = sess.get_inputs()[0].shape[2]
 
     #QRCode decoder

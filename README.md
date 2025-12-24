@@ -1,7 +1,7 @@
 # QRCode_Axera
 QRCode det & recognize DEMO on Axera
-- 搜集二维码图片数据对轻量级目标检测模型进行默认参数训练，量化转换后统计板端模型性能及精度
-- 目前支持ultralytics yolo/DEIMv2/NanodetPlus，提供yolov5/yolov8/DEIMv2/NanodetPlus系列二维码检测+zbar识别板端推理demo
+- 搜集5w张二维码图片数据对轻量级目标检测模型进行默认参数训练，量化转换后统计板端模型性能及精度
+- 目前支持ultralytics yolo/DEIMv2/NanodetPlus，提供yolov5/yolov8/DEIMv2/NanodetPlus系列二维码检测+zbar识别板端推理python/C++ demo
 - 目前支持 Python/C++ 语言 
 
 ## 支持平台
@@ -40,7 +40,7 @@ pulsar2 build --config ./deimv2.json
 or
 pulsar2 build --config ./nanodet.json
 ```
-得到对应模型用于部署的axmodel。
+得到对应模型用于部署的axmodel。（文件目录移动需要修改对应路径）
 注:deimv2模型现阶段部署仅支持AX650上U16量化。
 
 ## 上板部署
@@ -76,6 +76,91 @@ python3 QRCode_onnx_infer_xxx.py
 python3 QRCode_axmodel_infer_xxx.py
 ```  
 
+### C++ demo编译
+
+#### Requirements
+
+二维码识别需要安装 zbar 库，交叉编译方法如下:
+
+1.下载源码：
+```
+git clone https://github.com/mchehab/zbar.git
+```
+
+2.安装依赖库
+```
+sudo apt-get install autoconf autopoint pkg-config libtool gcc make gettext libpng-dev
+```
+
+3.交叉编译库
+
+以AX650为例，其编译器为aarch64-none-linux-gnu，则执行命令：
+```
+cd zbar-master/
+autoreconf -vfi
+./configure --host=aarch64-none-linux-gnu -prefix=$PWD/build_ax650
+make clean && make & make install
+```
+AX630C、AX637编译方法同上，更换对应的编译器执行命令即可。
+
+4.拷贝库和头文件到SDK相应目录
+```
+cd build_ax650/
+scp lib/libzbar.a /home/workspace/Feng/ax-samples-main/ax650n_bsp_sdk-main/msp/out/lib/
+scp lib/libzbar.so* /home/workspace/Feng/ax-samples-main/ax650n_bsp_sdk-main/msp/out/lib/
+scp -r include/* /home/workspace/Feng/ax-samples-main/ax650n_bsp_sdk-main/msp/out/include/
+```
+
+5.编译上板demo
+
+开源项目[AX_Samples](https://github.com/AXERA-TECH/ax-samples)实现了常见的深度学习开源算法在 爱芯元智 的 AI SoC 上的示例代码，方便社区开发者进行快速评估和适配。
+最新版本已开始提供 AX650 系列（AX650A、AX650N）、AX620E 系列（AX630C、AX620Q）的 NPU 示例。
+
+以AX650为例，编译参考[compile_650.md](https://github.com/AXERA-TECH/ax-samples/blob/main/docs/compile_650.md), 编译.cc文件得到可执行程序ax_yolov8_qrcode_batch、ax_yolov5_qrcode_batch、ax_deimv2_qrcode_batch、ax_nanodetplus_qrcode_batch。
+
+AX630C、AX637的板端编译方法参考对应的compile_xxx.md即可。
+
+
+#### 运行
+
+##### 基于AXEngine运行  
+将编好的动态库文件拷贝到开发板：
+
+```
+cd build_ax650/
+scp lib/libzbar.so* root@10.126.XX.1XX:/opt/lib/
+```
+
+将所需可执行文件、模型、图片等拷贝到开发板，并在开发板上运行命令：
+
+```
+./ax_yolov5_qrcode_batch -m ./yolov5n_650_npu1.axmodel -i ./qrcode_test/
+./ax_yolov5_qrcode_batch -m ./yolov8n_650_npu1.axmodel -i ./qrcode_test/
+./ax_deimv2_qrcode_batch -m ./deimv2_femto_650_npu1_u16.axmodel -i ./qrcode_test/
+./ax_nanodetplus_qrcode_batch -m nanodet-plus-m_650_npu1.axmodel - i qrcode_test/
+```  
+
+### 板端结果
+```
+使用./qrcode_test下的图片作为测试集，进行检测+识别测试，效果如下：
+--------------------------------------
+image path: qrcode_test//qrcode_55.jpg image index: qrcode_55
+post process cost time:0.93 ms
+--------------------------------------
+Repeat 1 times, avg time 3.73 ms, max_time 3.73 ms, min_time 3.73 ms
+--------------------------------------
+detection num: 1
+ 0:  96%, [1021,  749, 1145,  869], QRCode
+ZBAR cut region = [123 x 119]
+ZBAR scan n = 0
+ZBAR scan success use expand size of 153x150
+Decode data:[C:CNS:Aixin-GuestP:aixinguestK:e1QbyyUv], type:[QR-Code]
+--------------------------------------
+Total pics:48
+Total decode count:42
+Decode rate:87.5%
+
+```
 
 ### 效果统计
 
@@ -85,7 +170,7 @@ python3 QRCode_axmodel_infer_xxx.py
 注：
 1.YOLOv10~v12在使用默认参数训练时均有不同程度loss inf异常但最终mAP正常，可能与未使用预训练模型有关；
 2.检测框比较贴近二维码的识别率反而不高，检测区域适当外扩后识别效果更好；
-3.python demo识别率仅简单对比了是否外扩对精度的影响；C++ demo识别率则是额外加入了图像处理操作后的最终效果；模型latency和cmm size均通过ax_run_model统计；
+3.python demo识别率仅简单对比了是否外扩对精度的影响；C++ demo识别率则是额外加入了图像处理操作后的最终效果；模型latency和cmm size均通过ax_run_model统计，模型均为NPU1 mode；
 4.deimv2_femto这个模型部署效果较差，650上u8无检出，u16正常；620E上build报错；637上只能u8量化不支持u16，但u8无检出。
 5.对图片直接使用开源二维码识别库opencv/wechat_qrcode_opencv进行识别，识别率低于检测+crop+zbar识别方案。
 6.测试数据均为单二维码图片，测试耗时仅供参考。

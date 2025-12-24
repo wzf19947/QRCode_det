@@ -280,9 +280,10 @@ class Yolov5QRcodeDetector:
 
     def preprocess_image(self, img, img_size=(640, 640)):
         img, _, _ = letterbox(img, img_size, auto=False, stride=32)
-        img = np.ascontiguousarray(img[:, :, ::-1].transpose(2, 0, 1))
+        # img = np.ascontiguousarray(img[:, :, ::-1].transpose(2, 0, 1))
+        img = np.ascontiguousarray(img).astype(np.uint8)
         # img = np.asarray(img, dtype=np.float32)
-        img = np.asarray(img, dtype=np.uint8)
+        # img = np.asarray(img, dtype=np.uint8)
         img = np.expand_dims(img, 0)
         # img /= 255.0
         return img
@@ -300,6 +301,7 @@ class Yolov5QRcodeDetector:
         grid = torch.stack((xv, yv), 2).expand(shape) - 0.5  # add grid offset, i.e. y = 2.0 * x - 0.5
         anchor_grid = (self.anchors[i] * self.stride[i]).view((1, na, 1, 1, 2)).expand(shape)
         return grid, anchor_grid
+
     def postprocess(self, preds, img_shape, im0):
         z = []  # inference output
         for i,pred in enumerate(preds):
@@ -322,7 +324,8 @@ class Yolov5QRcodeDetector:
 
             if len(det):
                 # Rescale boxes from img_size to im0 size
-                scale_coords(img_shape[2:], det[:, :4], im0.shape, kpt_label=False)
+                # scale_coords(img_shape[2:], det[:, :4], im0.shape, kpt_label=False)
+                scale_coords(img_shape[1:3], det[:, :4], im0.shape, kpt_label=False)
 
                 # Print results
                 for c in det[:, 5].unique():
@@ -397,7 +400,7 @@ class QRCodeDecoder:
 if __name__ == '__main__':
     import time
 
-    model = './yolov5n_npu3.axmodel'
+    model = './yolov5n_650_npu1.axmodel'
     input_size = [640,640]
     detector = Yolov5QRcodeDetector(model)
     # Crop deteted QRCode & decode QRCode by pyzbar

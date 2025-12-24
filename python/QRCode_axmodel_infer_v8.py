@@ -49,7 +49,8 @@ def data_process_cv2(frame, input_shape):
     im0 = cv2.imread(frame)
     img = letterbox(im0, input_shape, auto=False, stride=32)[0]
     org_data = img.copy()
-    img = np.ascontiguousarray(img[:, :, ::-1].transpose(2, 0, 1))
+    # img = np.ascontiguousarray(img[:, :, ::-1].transpose(2, 0, 1))
+    img = np.ascontiguousarray(img[:, :, ::-1])
     img = np.asarray(img, dtype=np.uint8)
     img = np.expand_dims(img, 0)
     # img /= 255.0
@@ -506,7 +507,7 @@ class QRCodeDecoder:
 if __name__ == '__main__':
     import time
 
-    detector = YOLOV8Detector(model_path='./yolov8n_npu3.axmodel',imgsz=[640,640])
+    detector = YOLOV8Detector(model_path='./yolov8n_650_npu1.axmodel',imgsz=[640,640])
     decoder = QRCodeDecoder()
     img_path = './qrcode_test'
     det_path='./v8_det_res'
