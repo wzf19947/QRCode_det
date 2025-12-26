@@ -62,7 +62,6 @@ pip install pyzbar
 #### 运行
 
 ##### 基于 ONNX Runtime 运行  
-可在开发板或PC运行 
 
 在开发板或PC上，运行以下命令  
 ```  
@@ -80,7 +79,7 @@ python3 QRCode_axmodel_infer_xxx.py
 
 #### 基于zbar
 
-二维码识别需要安装 zbar 库，交叉编译方法如下:
+二维码识别库zbar，交叉编译方法如下:
 
 1.下载源码：
 ```
@@ -136,7 +135,9 @@ git clone https://github.com/nothings/stb.git
 ```
 
 2.安装依赖库
-参考https://blog.csdn.net/YOULANSHENGMENG/article/details/149027531
+
+参考https://blog.csdn.net/YOULANSHENGMENG/article/details/149027531,
+
 修改cmake和cmakelist
 
 
