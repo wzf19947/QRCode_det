@@ -78,7 +78,7 @@ python3 QRCode_axmodel_infer_xxx.py
 
 ### C++ demo编译
 
-#### Requirements
+#### 基于zbar
 
 二维码识别需要安装 zbar 库，交叉编译方法如下:
 
@@ -116,10 +116,58 @@ scp -r include/* /home/workspace/Feng/ax-samples-main/ax650n_bsp_sdk-main/msp/ou
 开源项目[AX_Samples](https://github.com/AXERA-TECH/ax-samples)实现了常见的深度学习开源算法在 爱芯元智 的 AI SoC 上的示例代码，方便社区开发者进行快速评估和适配。
 最新版本已开始提供 AX650 系列（AX650A、AX650N）、AX620E 系列（AX630C、AX620Q）的 NPU 示例。
 
-以AX650为例，编译参考[compile_650.md](https://github.com/AXERA-TECH/ax-samples/blob/main/docs/compile_650.md), 编译.cc文件得到可执行程序ax_yolov8_qrcode_batch、ax_yolov5_qrcode_batch、ax_deimv2_qrcode_batch、ax_nanodetplus_qrcode_batch。
+以AX650为例，编译参考[compile_650.md](https://github.com/AXERA-TECH/ax-samples/blob/main/docs/compile_650.md), 编译.cc文件得到可执行程序。
 
-AX630C、AX637的板端编译方法参考对应的compile_xxx.md即可。
+将zbar加入[ax650.cmake](https://github.com/AXERA-TECH/ax-samples/blob/main/cmake/ax650.cmake)中：
+target_link_libraries(${example_name} PRIVATE ${CMAKE_THREAD_LIBS_INIT} ax_interpreter ax_sys ax_ivps zbar)
 
+AX630C、AX637的板端编译方法同理参考对应的compile_xxx.md、修改对应cmake即可。
+
+#### 基于ZXing
+
+ZXing同样是一个常用二维码识别库，交叉编译方法如下:
+
+1.下载源码：
+```
+git clone https://github.com/zxing-cpp/zxing-cpp.git --recursive --single-branch --depth 1
+git clone https://github.com/nothings/stb.git
+```
+
+2.安装依赖库
+```
+参考https://blog.csdn.net/YOULANSHENGMENG/article/details/149027531，修改cmake和cmakelist
+```
+
+3.交叉编译库
+
+以AX650为例，其编译器为aarch64-none-linux-gnu，在ZXing工程上一级目录执行命令：
+```
+cmake -S zxing-cpp -B zxing-cpp.release -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/path/to/aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=/path/to/aarch64-linux-gnu-g++ -DBUILD_SHARED_LIBS=ON -DCMAKE_CXX_STANDARD=17
+
+cmake --build zxing-cpp.release -j8 --config Release 
+
+```
+需显示指定使用c++ 17标准，最终so生成在zxing-cpp.release目录下。AX630C、AX637编译方法同上，更换对应的编译器执行命令即可。
+
+4.拷贝库和头文件到SDK相应目录
+```
+cd zxing-cpp.release/core/
+scp libZXing.so* /home/workspace/Feng/ax-samples-main/ax650n_bsp_sdk-main/msp/out/lib/
+cd zxing-cpp/core/src
+scp -r *.h /home/workspace/Feng/ax-samples-main/ax650n_bsp_sdk-main/msp/out/include/ZXing
+```
+
+5.编译上板demo
+
+开源项目[AX_Samples](https://github.com/AXERA-TECH/ax-samples)实现了常见的深度学习开源算法在 爱芯元智 的 AI SoC 上的示例代码，方便社区开发者进行快速评估和适配。
+最新版本已开始提供 AX650 系列（AX650A、AX650N）、AX620E 系列（AX630C、AX620Q）的 NPU 示例。
+
+以AX650为例，编译参考[compile_650.md](https://github.com/AXERA-TECH/ax-samples/blob/main/docs/compile_650.md), 编译.cc文件得到可执行程序。
+
+将ZXing加入[ax650.cmake](https://github.com/AXERA-TECH/ax-samples/blob/main/cmake/ax650.cmake)中：
+target_link_libraries(${example_name} PRIVATE ${CMAKE_THREAD_LIBS_INIT} ax_interpreter ax_sys ax_ivps ZXing)
+
+AX630C、AX637的板端编译方法同理参考对应的compile_xxx.md、修改对应cmake即可。
 
 #### 运行
 
@@ -127,15 +175,16 @@ AX630C、AX637的板端编译方法参考对应的compile_xxx.md即可。
 将编好的动态库文件拷贝到开发板：
 
 ```
-cd build_ax650/
-scp lib/libzbar.so* root@10.126.XX.1XX:/opt/lib/
+scp libzbar.so* root@10.126.XX.1XX:/opt/lib/
+scp libZXing.so* root@10.126.XX.1XX:/opt/lib/
 ```
 
 将所需可执行文件、模型、图片等拷贝到开发板，并在开发板上运行命令：
 
 ```
 ./ax_yolov5_qrcode_batch -m ./yolov5n_650_npu1.axmodel -i ./qrcode_test/
-./ax_yolov5_qrcode_batch -m ./yolov8n_650_npu1.axmodel -i ./qrcode_test/
+./ax_yolov8_qrcode_batch -m ./yolov8n_650_npu1.axmodel -i ./qrcode_test/
+./ax_yolov8_qrcode_batch_zxing -m ./yolov8n_650_npu1.axmodel -i ./qrcode_test/
 ./ax_deimv2_qrcode_batch -m ./deimv2_femto_650_npu1_u16.axmodel -i ./qrcode_test/
 ./ax_nanodetplus_qrcode_batch -m nanodet-plus-m_650_npu1.axmodel - i qrcode_test/
 ```  
@@ -171,7 +220,7 @@ Decode rate:87.5%
 1.YOLOv10~v12在使用默认参数训练时均有不同程度loss inf异常但最终mAP正常，可能与未使用预训练模型有关；
 2.检测框比较贴近二维码的识别率反而不高，检测区域适当外扩后识别效果更好；
 3.python demo识别率仅简单对比了是否外扩对精度的影响；C++ demo识别率则是额外加入了图像处理操作后的最终效果；模型latency和cmm size均通过ax_run_model统计，模型均为NPU1 mode；
-4.deimv2_femto这个模型部署效果较差，650上u8无检出，u16正常；620E上build报错；637上只能u8量化不支持u16，但u8无检出。
-5.对图片直接使用开源二维码识别库opencv/wechat_qrcode_opencv进行识别，识别率低于检测+crop+zbar识别方案。
-6.测试数据均为单二维码图片，测试耗时仅供参考。
+4.对图片直接使用开源二维码识别库opencv/wechat_qrcode_opencv进行识别，识别率低于检测+crop+zbar识别方案。
+5.测试数据均为单二维码图片，测试耗时仅供参考。
+6.除上表zbar的结果外，另测试了其他开源识别库。yolov8检出输出相同QR图片、相同预处理情况下，zbar效果明显优于ZXing，可能不同算法侧重不同，仅供参考。
 ```
