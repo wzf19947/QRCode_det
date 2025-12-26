@@ -119,7 +119,9 @@ scp -r include/* /home/workspace/Feng/ax-samples-main/ax650n_bsp_sdk-main/msp/ou
 以AX650为例，编译参考[compile_650.md](https://github.com/AXERA-TECH/ax-samples/blob/main/docs/compile_650.md), 编译.cc文件得到可执行程序。
 
 将zbar加入[ax650.cmake](https://github.com/AXERA-TECH/ax-samples/blob/main/cmake/ax650.cmake)中：
+```
 target_link_libraries(${example_name} PRIVATE ${CMAKE_THREAD_LIBS_INIT} ax_interpreter ax_sys ax_ivps zbar)
+```
 
 AX630C、AX637的板端编译方法同理参考对应的compile_xxx.md、修改对应cmake即可。
 
@@ -134,9 +136,9 @@ git clone https://github.com/nothings/stb.git
 ```
 
 2.安装依赖库
-```
-参考https://blog.csdn.net/YOULANSHENGMENG/article/details/149027531，修改cmake和cmakelist
-```
+参考https://blog.csdn.net/YOULANSHENGMENG/article/details/149027531
+修改cmake和cmakelist
+
 
 3.交叉编译库
 
@@ -165,7 +167,9 @@ scp -r *.h /home/workspace/Feng/ax-samples-main/ax650n_bsp_sdk-main/msp/out/incl
 以AX650为例，编译参考[compile_650.md](https://github.com/AXERA-TECH/ax-samples/blob/main/docs/compile_650.md), 编译.cc文件得到可执行程序。
 
 将ZXing加入[ax650.cmake](https://github.com/AXERA-TECH/ax-samples/blob/main/cmake/ax650.cmake)中：
+```
 target_link_libraries(${example_name} PRIVATE ${CMAKE_THREAD_LIBS_INIT} ax_interpreter ax_sys ax_ivps ZXing)
+```
 
 AX630C、AX637的板端编译方法同理参考对应的compile_xxx.md、修改对应cmake即可。
 
@@ -213,7 +217,7 @@ Decode rate:87.5%
 
 ### 效果统计
 
-使用./qrcode_test下的图片作为测试集，进行检测+识别测试，效果统计如下：
+使用./qrcode_test下的图片作为测试集，进行检测+识别测试，zbar效果统计如下：
 ![alt text](image.png)
 ```
 注：
@@ -222,5 +226,5 @@ Decode rate:87.5%
 3.python demo识别率仅简单对比了是否外扩对精度的影响；C++ demo识别率则是额外加入了图像处理操作后的最终效果；模型latency和cmm size均通过ax_run_model统计，模型均为NPU1 mode；
 4.对图片直接使用开源二维码识别库opencv/wechat_qrcode_opencv进行识别，识别率低于检测+crop+zbar识别方案。
 5.测试数据均为单二维码图片，测试耗时仅供参考。
-6.除上表zbar的结果外，另测试了其他开源识别库。yolov8检出输出相同QR图片、相同预处理情况下，zbar效果明显优于ZXing，可能不同算法侧重不同，仅供参考。
+6.yolov8检出输出相同QR图片、相同预处理情况下，zbar效果明显优于ZXing，可能不同算法侧重不同，仅供参考。
 ```
