@@ -124,6 +124,47 @@ target_link_libraries(${example_name} PRIVATE ${CMAKE_THREAD_LIBS_INIT} ax_inter
 
 AX630C、AX637的板端编译方法同理参考对应的compile_xxx.md、修改对应cmake即可。
 
+#### 基于quirc
+
+quirc是一个专用于识别二维码的开源库，交叉编译方法如下:
+
+1.下载源码：
+```
+git clone https://github.com/dlbeer/quirc.git
+```
+
+2.交叉编译库
+
+将makefile18~19行屏蔽。
+以AX650为例，其编译器为aarch64-none-linux-gnu，在quirc工程目录执行命令：
+```
+make libquirc.so  CC=aarch64-none-linux-gnu-gcc   AR=aarch64-none-linux-gnu-ar   CFLAGS="-fPIC -O2 -Wall"   QUIRC_SHARED=1
+
+```
+AX630C、AX637编译方法同上，更换对应的编译器执行命令即可。
+
+4.拷贝库和头文件到SDK相应目录
+```
+scp libquirc.so* /home/workspace/Feng/ax-samples-main/ax650n_bsp_sdk-main/msp/out/lib/
+scp lib/quirc.h /home/workspace/Feng/ax-samples-main/ax650n_bsp_sdk-main/msp/out/include/
+拷贝so到650板端：
+scp libquirc.so* /usr/lib/aarch64-linux-gnu/
+```
+
+5.编译上板demo
+
+开源项目[AX_Samples](https://github.com/AXERA-TECH/ax-samples)实现了常见的深度学习开源算法在 爱芯元智 的 AI SoC 上的示例代码，方便社区开发者进行快速评估和适配。
+最新版本已开始提供 AX650 系列（AX650A、AX650N）、AX620E 系列（AX630C、AX620Q）的 NPU 示例。
+
+以AX650为例，编译参考[compile_650.md](https://github.com/AXERA-TECH/ax-samples/blob/main/docs/compile_650.md), 编译.cc文件得到可执行程序。
+
+将quirc加入[ax650.cmake](https://github.com/AXERA-TECH/ax-samples/blob/main/cmake/ax650.cmake)中：
+```
+target_link_libraries(${example_name} PRIVATE ${CMAKE_THREAD_LIBS_INIT} ax_interpreter ax_sys ax_ivps quirc)
+```
+
+AX630C、AX637的板端编译方法同理参考对应的compile_xxx.md、修改对应cmake即可。
+
 #### 基于ZXing
 
 ZXing同样是一个常用二维码识别库，交叉编译方法如下:
@@ -227,5 +268,5 @@ Decode rate:87.5%
 3.python demo识别率仅简单对比了是否外扩对精度的影响；C++ demo识别率则是额外加入了图像处理操作后的最终效果；模型latency和cmm size均通过ax_run_model统计，模型均为NPU1 mode；
 4.对图片直接使用开源二维码识别库opencv/wechat_qrcode_opencv进行识别，识别率低于检测+crop+zbar识别方案。
 5.测试数据均为单二维码图片，测试耗时仅供参考。
-6.yolov8检出输出相同QR图片、相同预处理情况下，zbar效果明显优于ZXing，可能不同算法侧重不同，仅供参考。
+6.常用开源识别库中，在yolov8检出输出相同QR图片、相同预处理情况下，zbar识别率(87.5%)明显优于ZXing(39.6%)/quirc(4.2%)，可能图片质量对不同算法影响较大，仅供参考；当前opencv sdk为精简版，不包含opencv_qrcode部分，opencv_wechat_qrcode则需要额外模型支持，均未尝试；目前综合看zbar方案最优。
 ```
