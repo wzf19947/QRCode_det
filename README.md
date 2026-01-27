@@ -1,7 +1,7 @@
 # QRCode_Axera
 QRCode det & recognize DEMO on Axera
 - 搜集5w张二维码图片数据对轻量级目标检测模型进行默认参数训练，量化转换后统计板端模型性能及精度
-- 目前支持ultralytics yolo/DEIMv2/NanodetPlus，提供yolov5/yolov8/DEIMv2/NanodetPlus系列二维码检测+zbar识别板端推理python/C++ demo
+- 目前支持ultralytics yolo/DEIMv2/NanodetPlus，提供yolov5/yolov8/yolo26/DEIMv2/NanodetPlus系列二维码检测+zbar识别板端推理python/C++ demo
 - 目前支持 Python/C++ 语言 
 
 ## 支持平台
@@ -231,6 +231,8 @@ scp libZXing.so* root@10.126.XX.1XX:/opt/lib/
 ./ax_yolov5_qrcode_batch -m ./yolov5n_650_npu1.axmodel -i ./qrcode_test/
 ./ax_yolov8_qrcode_batch -m ./yolov8n_650_npu1.axmodel -i ./qrcode_test/
 ./ax_yolov8_qrcode_batch_zxing -m ./yolov8n_650_npu1.axmodel -i ./qrcode_test/
+./ax_yolov8_qrcode_batch_quirc -m ./yolov8n_650_npu1.axmodel -i ./qrcode_test/
+./ax_yolo26_qrcode_batch -m ./yolo26n_650_npu1.axmodel -i ./qrcode_test/
 ./ax_deimv2_qrcode_batch -m ./deimv2_femto_650_npu1_u16.axmodel -i ./qrcode_test/
 ./ax_nanodetplus_qrcode_batch -m nanodet-plus-m_650_npu1.axmodel - i qrcode_test/
 ```  
