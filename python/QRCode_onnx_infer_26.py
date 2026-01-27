@@ -5,11 +5,166 @@ import time
 import yaml
 import glob
 import os
-import pyzbar.pyzbar as pyzbar
 import torch
-from ultralytics.utils import nms
+from pyzbar import pyzbar
+names = [
+    "QRCode"
+]
 
-names = ["QRcode"]
+def non_max_suppression(
+    prediction,
+    conf_thres: float = 0.25,
+    iou_thres: float = 0.45,
+    classes=None,
+    agnostic: bool = False,
+    multi_label: bool = False,
+    labels=(),
+    max_det: int = 300,
+    nc: int = 0,  # number of classes (optional)
+    max_time_img: float = 0.05,
+    max_nms: int = 30000,
+    max_wh: int = 7680,
+    rotated: bool = False,
+    end2end: bool = False,
+    return_idxs: bool = False,
+):
+    """Perform non-maximum suppression (NMS) on prediction results.
+
+    Applies NMS to filter overlapping bounding boxes based on confidence and IoU thresholds. Supports multiple detection
+    formats including standard boxes, rotated boxes, and masks.
+
+    Args:
+        prediction (torch.Tensor): Predictions with shape (batch_size, num_classes + 4 + num_masks, num_boxes)
+            containing boxes, classes, and optional masks.
+        conf_thres (float): Confidence threshold for filtering detections. Valid values are between 0.0 and 1.0.
+        iou_thres (float): IoU threshold for NMS filtering. Valid values are between 0.0 and 1.0.
+        classes (list[int], optional): List of class indices to consider. If None, all classes are considered.
+        agnostic (bool): Whether to perform class-agnostic NMS.
+        multi_label (bool): Whether each box can have multiple labels.
+        labels (list[list[Union[int, float, torch.Tensor]]]): A priori labels for each image.
+        max_det (int): Maximum number of detections to keep per image.
+        nc (int): Number of classes. Indices after this are considered masks.
+        max_time_img (float): Maximum time in seconds for processing one image.
+        max_nms (int): Maximum number of boxes for NMS.
+        max_wh (int): Maximum box width and height in pixels.
+        rotated (bool): Whether to handle Oriented Bounding Boxes (OBB).
+        end2end (bool): Whether the model is end-to-end and doesn't require NMS.
+        return_idxs (bool): Whether to return the indices of kept detections.
+
+    Returns:
+        output (list[torch.Tensor]): List of detections per image with shape (num_boxes, 6 + num_masks) containing (x1,
+            y1, x2, y2, confidence, class, mask1, mask2, ...).
+        keepi (list[torch.Tensor]): Indices of kept detections if return_idxs=True.
+    """
+    # Checks
+    assert 0 <= conf_thres <= 1, f"Invalid Confidence threshold {conf_thres}, valid values are between 0.0 and 1.0"
+    assert 0 <= iou_thres <= 1, f"Invalid IoU {iou_thres}, valid values are between 0.0 and 1.0"
+    if isinstance(prediction, (list, tuple)):  # YOLOv8 model in validation model, output = (inference_out, loss_out)
+        prediction = prediction[0]  # select only inference output
+    if classes is not None:
+        classes = torch.tensor(classes, device=prediction.device)
+
+    if prediction.shape[-1] == 6 or end2end:  # end-to-end model (BNC, i.e. 1,300,6)
+        output = [pred[pred[:, 4] > conf_thres][:max_det] for pred in prediction]
+        if classes is not None:
+            output = [pred[(pred[:, 5:6] == classes).any(1)] for pred in output]
+        return output
+
+    bs = prediction.shape[0]  # batch size (BCN, i.e. 1,84,6300)
+    nc = nc or (prediction.shape[1] - 4)  # number of classes
+    extra = prediction.shape[1] - nc - 4  # number of extra info
+    mi = 4 + nc  # mask start index
+    xc = prediction[:, 4:mi].amax(1) > conf_thres  # candidates
+    xinds = torch.arange(prediction.shape[-1], device=prediction.device).expand(bs, -1)[..., None]  # to track idxs
+
+    # Settings
+    # min_wh = 2  # (pixels) minimum box width and height
+    time_limit = 2.0 + max_time_img * bs  # seconds to quit after
+    multi_label &= nc > 1  # multiple labels per box (adds 0.5ms/img)
+
+    prediction = prediction.transpose(-1, -2)  # shape(1,84,6300) to shape(1,6300,84)
+    if not rotated:
+        prediction[..., :4] = xywh2xyxy(prediction[..., :4])  # xywh to xyxy
+
+    t = time.time()
+    output = [torch.zeros((0, 6 + extra), device=prediction.device)] * bs
+    keepi = [torch.zeros((0, 1), device=prediction.device)] * bs  # to store the kept idxs
+    for xi, (x, xk) in enumerate(zip(prediction, xinds)):  # image index, (preds, preds indices)
+        # Apply constraints
+        # x[((x[:, 2:4] < min_wh) | (x[:, 2:4] > max_wh)).any(1), 4] = 0  # width-height
+        filt = xc[xi]  # confidence
+        x = x[filt]
+        if return_idxs:
+            xk = xk[filt]
+
+        # Cat apriori labels if autolabelling
+        if labels and len(labels[xi]) and not rotated:
+            lb = labels[xi]
+            v = torch.zeros((len(lb), nc + extra + 4), device=x.device)
+            v[:, :4] = xywh2xyxy(lb[:, 1:5])  # box
+            v[range(len(lb)), lb[:, 0].long() + 4] = 1.0  # cls
+            x = torch.cat((x, v), 0)
+
+        # If none remain process next image
+        if not x.shape[0]:
+            continue
+
+        # Detections matrix nx6 (xyxy, conf, cls)
+        box, cls, mask = x.split((4, nc, extra), 1)
+
+        if multi_label:
+            i, j = torch.where(cls > conf_thres)
+            x = torch.cat((box[i], x[i, 4 + j, None], j[:, None].float(), mask[i]), 1)
+            if return_idxs:
+                xk = xk[i]
+        else:  # best class only
+            conf, j = cls.max(1, keepdim=True)
+            filt = conf.view(-1) > conf_thres
+            x = torch.cat((box, conf, j.float(), mask), 1)[filt]
+            if return_idxs:
+                xk = xk[filt]
+
+        # Filter by class
+        if classes is not None:
+            filt = (x[:, 5:6] == classes).any(1)
+            x = x[filt]
+            if return_idxs:
+                xk = xk[filt]
+
+        # Check shape
+        n = x.shape[0]  # number of boxes
+        if not n:  # no boxes
+            continue
+        if n > max_nms:  # excess boxes
+            filt = x[:, 4].argsort(descending=True)[:max_nms]  # sort by confidence and remove excess boxes
+            x = x[filt]
+            if return_idxs:
+                xk = xk[filt]
+
+        c = x[:, 5:6] * (0 if agnostic else max_wh)  # classes
+        scores = x[:, 4]  # scores
+        if rotated:
+            boxes = torch.cat((x[:, :2] + c, x[:, 2:4], x[:, -1:]), dim=-1)  # xywhr
+            i = TorchNMS.fast_nms(boxes, scores, iou_thres, iou_func=batch_probiou)
+        else:
+            boxes = x[:, :4] + c  # boxes (offset by class)
+            # Speed strategy: torchvision for val or already loaded (faster), TorchNMS for predict (lower latency)
+            if "torchvision" in sys.modules:
+                import torchvision  # scope as slow import
+
+                i = torchvision.ops.nms(boxes, scores, iou_thres)
+            else:
+                i = TorchNMS.nms(boxes, scores, iou_thres)
+        i = i[:max_det]  # limit detections
+
+        output[xi] = x[i]
+        if return_idxs:
+            keepi[xi] = xk[i].view(-1)
+        if (time.time() - t) > time_limit:
+            LOGGER.warning(f"NMS time limit {time_limit:.3f}s exceeded")
+            break  # time limit exceeded
+
+    return (output, keepi) if return_idxs else output
 
 def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
     
@@ -56,170 +211,6 @@ def data_process_cv2(frame, input_shape):
     img = np.expand_dims(img, 0)
     img /= 255.0
     return img, im0, org_data
-
-# def non_max_suppression(prediction,
-#                         conf_thres=0.25,
-#                         iou_thres=0.45,
-#                         classes=None,
-#                         agnostic=False,
-#                         multi_label=False,
-#                         labels=(),
-#                         max_det=300,
-#                         nm=0  # number of masks
-#                         ):
-#     """
-#     Perform Non-Maximum Suppression (NMS) on the boxes to filter out overlapping boxes.
-
-#     Parameters:
-#     prediction (ndarray): Predictions from the model.
-#     conf_thres (float): Confidence threshold to filter boxes.
-#     iou_thres (float): Intersection over Union (IoU) threshold for NMS.
-#     classes (list): Filter boxes by classes.
-#     agnostic (bool): If True, perform class-agnostic NMS.
-#     multi_label (bool): If True, perform multi-label NMS.
-#     labels (list): Labels for auto-labelling.
-#     max_det (int): Maximum number of detections.
-#     nm (int): Number of masks.
-
-#     Returns:
-#     list: A list of filtered boxes.
-#     """
-#     bs = prediction.shape[0]  # batch size
-#     nc = prediction.shape[2] - nm - 5  # number of classes
-#     xc = prediction[..., 4] > conf_thres  # candidates
-
-#     max_wh = 7680  # (pixels) maximum box width and height
-#     max_nms = 30000  # maximum number of boxes into torchvision.ops.nms()
-#     time_limit = 0.5 + 0.05 * bs  # seconds to quit after
-#     # redundant = True  # require redundant detections
-#     multi_label &= nc > 1  # multiple labels per box (adds 0.5ms/img)
-#     # merge = False  # use merge-NMS
-
-#     t = time.time()
-#     mi = 5 + nc  # mask start index
-#     output = [np.zeros((0, 6 + nm))] * bs
-#     for xi, x in enumerate(prediction):  # image index, image inference
-#         # Apply constraints
-#         x = x[xc[xi]]  # confidence
-
-#         # Cat apriori labels if autolabelling
-#         if labels and len(labels[xi]):
-#             lb = labels[xi]
-#             v = np.zeros((len(lb), nc + nm + 5))
-#             v[:, :4] = lb[:, 1:5]  # box
-#             v[:, 4] = 1.0  # conf
-#             v[np.arange(len(lb)), lb[:, 0].astype(int) + 5] = 1.0  # cls
-#             x = np.concatenate((x, v), 0)
-
-#         # If none remain process next image
-#         if not x.shape[0]:
-#             continue
-
-#         # Compute conf
-#         x[:, 5:] *= x[:, 4:5]  # conf = obj_conf * cls_conf
-
-#         # Box/Mask
-#         box = xywh2xyxy(x[:, :4])  # center_x, center_y, width, height) to (x1, y1, x2, y2)
-#         mask = x[:, mi:]  # zero columns if no masks
-
-#         # Detections matrix nx6 (xyxy, conf, cls)
-#         if multi_label:
-#             i, j = np.nonzero(x[:, 5:mi] > conf_thres)
-#             x = np.concatenate((box[i], x[i, 5 + j][:, None], j[:, None].astype(float), mask[i]), 1)
-#         else:  # best class only
-#             # conf = x[:, 5:mi].max(1, keepdims=True)
-#             # j = x[:, 5:mi].argmax(1,keepdims=True)
-#             conf = np.max(x[:, 5:mi], 1).reshape(box.shape[:1][0], 1)
-#             j = np.argmax(x[:, 5:mi], 1).reshape(box.shape[:1][0], 1)
-#             x = np.concatenate((box, conf, j.astype(float), mask), 1)[conf[:, 0] > conf_thres]
-#         # Filter by class
-#         if classes is not None:
-#             x = x[(x[:, 5:6] == np.array(classes)[:, None]).any(1)]
-#         # Check shape
-#         n = x.shape[0]  # number of boxes
-#         if not n:  # no boxes
-#             continue
-#         sorted_indices = np.argsort(x[:, 4])[::-1]
-#         x = x[sorted_indices][:max_nms]  # sort by confidence and remove excess boxes
-
-#         # Batched NMS
-#         c = x[:, 5:6] * (0 if agnostic else max_wh)  # classes
-#         boxes, scores = x[:, :4] + c, x[:, 4]  # boxes (offset by class), scores
-#         i = nms(boxes, scores, iou_thres)  # NMS
-
-#         i = i[:max_det]  # limit detections
-
-#         output[xi] = x[i]
-#         # if mps:
-#         #     output[xi] = output[xi].to(device)
-#         if (time.time() - t) > time_limit:
-#             # LOGGER.warning(f'WARNING  NMS time limit {time_limit:.3f}s exceeded')
-#             break  # time limit exceeded
-#     return output
-
-# def nms(boxes, scores, iou_threshold):
-#     """
-#     Perform Non-Maximum Suppression (NMS) on the given boxes with scores using numpy.
-
-#     Parameters:
-#     boxes (ndarray): The bounding boxes, shaped (N, 4).
-#     scores (ndarray): The confidence scores for each box, shaped (N,).
-#     iou_threshold (float): The IoU threshold for suppressing overlapping boxes.
-
-#     Returns:
-#     ndarray: The indices of the selected boxes after NMS.
-#     """
-#     if len(boxes) == 0:
-#         return []
-
-#     # Sort boxes by their scores
-#     indices = np.argsort(scores)[::-1]
-
-#     selected_indices = []
-#     while len(indices) > 0:
-#         # Select the box with the highest score
-#         current_index = indices[0]
-#         selected_indices.append(current_index)
-
-#         # Compute IoU between the current box and all other boxes
-#         current_box = boxes[current_index]
-#         other_boxes = boxes[indices[1:]]
-#         iou = calculate_iou(current_box, other_boxes)
-
-#         # Remove boxes with IoU higher than the threshold
-#         indices = indices[1:][iou <= iou_threshold]
-
-#     return np.array(selected_indices)
-
-
-# def calculate_iou(box, boxes):
-#     """
-#     Calculate the Intersection over Union (IoU) between a given box and a set of boxes.
-
-#     Parameters:
-#     box (ndarray): The coordinates of the first box, shaped (4,).
-#     boxes (ndarray): The coordinates of the other boxes, shaped (N, 4).
-
-#     Returns:
-#     ndarray: The IoU between the given box and each box in the set, shaped (N,).
-#     """
-#     # Calculate intersection coordinates
-#     x1 = np.maximum(box[0], boxes[:, 0])
-#     y1 = np.maximum(box[1], boxes[:, 1])
-#     x2 = np.minimum(box[2], boxes[:, 2])
-#     y2 = np.minimum(box[3], boxes[:, 3])
-
-#     # Calculate intersection area
-#     intersection_area = np.maximum(x2 - x1, 0) * np.maximum(y2 - y1, 0)
-
-#     # Calculate areas of both bounding boxes
-#     box_area = (box[2] - box[0]) * (box[3] - box[1])
-#     boxes_area = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
-
-#     # Calculate IoU
-#     iou = intersection_area / (box_area + boxes_area - intersection_area)
-
-#     return iou
 
 # Define xywh2xyxy function for converting bounding box format
 def xywh2xyxy(x):
@@ -486,9 +477,7 @@ class YOLOV8Detector:
         y = np.concatenate((dbox, 1/(1 + np.exp(-scores))), axis=1)
         y = y.transpose([0, 2, 1])
         pred = self.postprocess(torch.from_numpy(y))
-        # print('preds shape:',preds.shape)
-        #yolo26默认不使用nms仅过滤满足阈值的框，但训练出来的模型会有多框需要nms过滤
-        pred = nms.non_max_suppression(
+        pred = non_max_suppression(
             pred.cpu().numpy(),
             0.25,
             0.7,
@@ -496,7 +485,7 @@ class YOLOV8Detector:
             False,
             max_det=300,
             nc=0,
-            end2end=False,
+            end2end=True,
             rotated=False,
             return_idxs=None,
         )
